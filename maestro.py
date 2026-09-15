@@ -229,7 +229,7 @@ def on_open(ws):
 def start_mqtt():
     global client
     logger.info('Connection in progress to the MQTT broker (IP:' +
-                _MQTT_ip + ' PORT:'+str(_MQTT_port)+')')
+        _MQTT_ip + ' PORT:'+str(_MQTT_port)+')')
     client = mqtt.Client(client_id="MCZ_PelletStove")
     if _MQTT_authentication:
         print('mqtt authentication enabled')
@@ -237,7 +237,26 @@ def start_mqtt():
     client.on_connect = on_connect_mqtt
     client.on_disconnect = on_disconnect_mqtt
     client.on_message = on_message_mqtt
-    client.connect(_MQTT_ip, _MQTT_port)
+
+    # Le réseau (Wi-Fi/bridge du LXC) peut ne pas être encore joignable au
+    # tout premier démarrage, même après network-online.target. On retente
+    # avec un backoff exponentiel (5s -> 10s -> 20s -> ... plafonné à 60s)
+    # au lieu de laisser une OSError faire planter tout le script.
+    retry_delay = 5
+    max_retry_delay = 60
+    while True:
+        try:
+            client.connect(_MQTT_ip, _MQTT_port)
+            break
+        except OSError as e:
+            logger.warning(
+                'MQTT: Broker ' + _MQTT_ip + ':' + str(_MQTT_port) +
+                ' injoignable (' + str(e) + '). Nouvel essai dans ' +
+                str(retry_delay) + 's...'
+            )
+            time.sleep(retry_delay)
+            retry_delay = min(retry_delay * 2, max_retry_delay)
+
     client.loop_start()
 
 def publish_availabletopics():  
