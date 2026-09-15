@@ -100,7 +100,7 @@ MaestroInfoMessageCache = {}
 # Start
 logger.info('Starting Maestro Daemon')
 
-def on_connect_mqtt(client, userdata, flags, rc):
+def on_connect_mqtt(client, userdata, flags, reason_code, properties):
     logger.info("MQTT: Connected to broker. " + str(rc))
     if _MQTT_PAYLOAD_TYPE == 'TOPIC':
         logger.info('MQTT: Subscribed to topic "' + str(_MQTT_TOPIC_SUB) + '#"')
@@ -114,8 +114,8 @@ def on_connect_mqtt(client, userdata, flags, rc):
         logger.info('MQTT: Subscribed to topic "' + str(_MQTT_TOPIC_SUB) + '"')
         client.subscribe(_MQTT_TOPIC_SUB, qos=1)
 
-def on_disconnect_mqtt(client, userdata, rc):
-    if rc != 0:
+def on_disconnect_mqtt(client, userdata, disconnect_flags, reason_code, properties):
+    if reason_code != 0:
         logger.info("MQTT: Unexpected disconnection -> try to reconnect...")
 
 def on_message_mqtt(client, userdata, message):
@@ -230,7 +230,10 @@ def start_mqtt():
     global client
     logger.info('Connection in progress to the MQTT broker (IP:' +
         _MQTT_ip + ' PORT:'+str(_MQTT_port)+')')
-    client = mqtt.Client(client_id="MCZ_PelletStove")
+    client = mqtt.Client(
+        callback_api_version=mqtt.CallbackAPIVersion.VERSION2,
+        client_id="MCZ_PelletStove",
+    )
     if _MQTT_authentication:
         print('mqtt authentication enabled')
         client.username_pw_set(username=_MQTT_user, password=_MQTT_pass)
