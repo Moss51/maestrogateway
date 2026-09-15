@@ -117,10 +117,20 @@ POWER_LEVEL_MAP = {
     "11": "Puissance 1", "12": "Puissance 2", "13": "Puissance 3",
     "14": "Puissance 4", "15": "Puissance 5",
 }
+# Asymétrie du firmware Maestro : le topic d'ÉTAT Power_Level renvoie
+# 11-15, mais le topic de COMMANDE Power_Level attend 1-5 (sans le
+# préfixe "1"). Confirmé par le YAML manuel du tuto communautaire, où
+# les switches envoient payload 1-5 à Maestro/Command/Power_Level tout
+# en lisant l'état sur Maestro/Power_Level avec des valeurs 11-15.
+POWER_LEVEL_COMMAND_MAP = {
+    "Puissance 1": "1", "Puissance 2": "2", "Puissance 3": "3",
+    "Puissance 4": "4", "Puissance 5": "5",
+}
 
 BRAZIER_MAP = {"0": "OK", "100": "Fermeture en cours", "101": "Ouverture en cours"}
 CANDLE_MAP = {"0": "OK", "1": "Usée"}
 ONOFF_MAP = {"0": "Off", "1": "On"}
+CONTROL_MODE_MAP = {"0": "Manuelle", "1": "Dynamique"}
 
 
 def _jinja_lookup(mapping, default_expr="'Inconnu (' ~ value ~ ')'"):
@@ -163,7 +173,13 @@ def _sensor(name, state_key, unit=None, device_class=None, value_template=None,
     return cfg
 
 
-def _select(name, state_key, cmd_key, options_map, icon=None):
+def _select(name, state_key, cmd_key, options_map, icon=None, command_map=None):
+    """command_map : dict optionnel {label_affiché: code_de_commande},
+    à fournir quand le topic de commande n'utilise pas les mêmes codes
+    que le topic d'état (voir Power_Level)."""
+    cmd_lookup = command_map if command_map is not None else {
+        v: k for k, v in options_map.items()
+    }
     return {
         "name": name,
         "state_topic": PUB_PREFIX + state_key,
@@ -171,9 +187,7 @@ def _select(name, state_key, cmd_key, options_map, icon=None):
         "value_template": _jinja_lookup(options_map, default_expr="value"),
         "options": list(options_map.values()),
         # traduit le libellé choisi dans HA vers le code numérique attendu
-        "command_template": _jinja_lookup(
-            {v: k for k, v in options_map.items()}, default_expr="value"
-        ),
+        "command_template": _jinja_lookup(cmd_lookup, default_expr="value"),
         "icon": icon or "mdi:fan",
     }
 
@@ -255,9 +269,13 @@ def build_entities():
         "Profil de fonctionnement", "Profile", "Profile", PROFILE_MAP,
         icon="mdi:tune-variant"
     )
+    entities[("select", "mode_de_regulation")] = _select(
+        "Mode de régulation", "Control_Mode", "Control_Mode", CONTROL_MODE_MAP,
+        icon="mdi:cog-sync"
+    )
     entities[("select", "reglage_puissance")] = _select(
         "Réglage puissance", "Power_Level", "Power_Level", POWER_LEVEL_MAP,
-        icon="mdi:fire-alert"
+        command_map=POWER_LEVEL_COMMAND_MAP, icon="mdi:fire-alert"
     )
 
     # --- Switches (réglages) -----------------------------------------------
