@@ -101,7 +101,7 @@ MaestroInfoMessageCache = {}
 logger.info('Starting Maestro Daemon')
 
 def on_connect_mqtt(client, userdata, flags, reason_code, properties):
-    logger.info("MQTT: Connected to broker. " + str(rc))
+    logger.info("MQTT: Connected to broker. " + str(reason_code))
     if _MQTT_PAYLOAD_TYPE == 'TOPIC':
         logger.info('MQTT: Subscribed to topic "' + str(_MQTT_TOPIC_SUB) + '#"')
         client.subscribe(_MQTT_TOPIC_SUB+'#', qos=1)
