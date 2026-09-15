@@ -22,6 +22,7 @@ import threading
 import paho.mqtt.client as mqtt
 import websocket
 
+from ha_discovery import publish_discovery
 from logging.handlers import RotatingFileHandler
 from messages import MaestroMessageType, process_infostring, get_maestro_info, get_maestro_infoname, MAESTRO_INFORMATION, MaestroInformation
 
