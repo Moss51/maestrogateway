@@ -105,6 +105,10 @@ def on_connect_mqtt(client, userdata, flags, rc):
         logger.info('MQTT: Subscribed to topic "' + str(_MQTT_TOPIC_SUB) + '#"')
         client.subscribe(_MQTT_TOPIC_SUB+'#', qos=1)
         publish_availabletopics()
+        publish_discovery(client, logger)
+        MaestroInfoMessageCache.clear()
+        CommandQueue.put(MaestroCommandValue(
+            MaestroCommand('GetInfo', 0, 'GetInfo', 'GetInfo'), 0))
     else:
         logger.info('MQTT: Subscribed to topic "' + str(_MQTT_TOPIC_SUB) + '"')
         client.subscribe(_MQTT_TOPIC_SUB, qos=1)
@@ -155,7 +159,7 @@ def send_connection_status_message(message):
             for key in json_dictionary:
                 logger.info('MQTT: publish to Topic "' + str(_MQTT_TOPIC_PUB + key) +
                         '", Message : ' + str(json_dictionary[key]))
-                client.publish(_MQTT_TOPIC_PUB+key, json_dictionary[key], 1)
+                client.publish(_MQTT_TOPIC_PUB+key, json_dictionary[key], 1, retain=True)
         else:
             client.publish(_MQTT_TOPIC_PUB, json.dumps(message), 1)
         old_connection_status = message
@@ -178,7 +182,7 @@ def process_info_message(message):
             logger.info(str(json.dumps(maestro_info_message_publish)))
             for key in maestro_info_message_publish:
                 logger.info('MQTT: publish to Topic "' + str(_MQTT_TOPIC_PUB + key) +'", Message : ' + str(maestro_info_message_publish[key]))
-                client.publish(_MQTT_TOPIC_PUB + key, maestro_info_message_publish[key], 1)
+                client.publish(_MQTT_TOPIC_PUB + key, maestro_info_message_publish[key], 1, retain=True)
         else:
             client.publish(_MQTT_TOPIC_PUB, json.dumps(maestro_info_message_publish), 1)
 
