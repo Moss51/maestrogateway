@@ -131,6 +131,7 @@ BRAZIER_MAP = {"0": "OK", "100": "Fermeture en cours", "101": "Ouverture en cour
 CANDLE_MAP = {"0": "OK", "1": "Usée"}
 ONOFF_MAP = {"0": "Off", "1": "On"}
 CONTROL_MODE_MAP = {"0": "Manuelle", "1": "Dynamique"}
+CELSIUS_FAHRENHEIT_MAP = {"0": "Celsius", "1": "Fahrenheit"}
 
 
 def _jinja_lookup(mapping, default_expr="'Inconnu (' ~ value ~ ')'"):
@@ -324,6 +325,90 @@ def build_entities():
         "Heures de fonctionnement totales", "Total_Operating_Hours",
         diagnostic=True, icon="mdi:clock-outline"
     )
+    # --- Mécanique / débit --------------------------------------------------
+    entities[("sensor", "vitesse_ventilateur_fumee")] = _sensor(
+        "Vitesse ventilateur fumée", "RPM_Fam_Fume",
+        unit="RPM", diagnostic=True, icon="mdi:fan",
+        state_class="measurement"
+    )
+    entities[("sensor", "vis_sans_fin_consigne")] = _sensor(
+        "Vis sans fin (consigne)", "RPM_WormWheel_Set",
+        unit="RPM", diagnostic=True, icon="mdi:cog-clockwise"
+    )
+    entities[("sensor", "vis_sans_fin_mesuree")] = _sensor(
+        "Vis sans fin (mesurée)", "RPM_WormWheel_Live",
+        unit="RPM", diagnostic=True, icon="mdi:cog-clockwise",
+        state_class="measurement"
+    )
+    entities[("sensor", "pompe_circulation")] = _sensor(
+        "Pompe circulation", "Pump_PWM",
+        unit="%", diagnostic=True, icon="mdi:pump",
+        state_class="measurement"
+    )
+    entities[("sensor", "vanne_3_voies")] = _sensor(
+        "Vanne 3 voies", "3WayValve",
+        diagnostic=True, icon="mdi:valve"
+    )
+
+    # --- Températures supplémentaires ---------------------------------------
+    entities[("sensor", "temperature_sonde_ntc3")] = _sensor(
+        "Température sonde NTC3", "NTC3_Temperature",
+        unit="°C", device_class="temperature", state_class="measurement",
+        diagnostic=True
+    )
+    entities[("sensor", "temperature_ballon_tampon")] = _sensor(
+        "Température ballon tampon", "Puffer_Temperature",
+        unit="°C", device_class="temperature", state_class="measurement",
+        diagnostic=True
+    )
+    entities[("sensor", "temperature_retour")] = _sensor(
+        "Température retour", "Return_Temperature",
+        unit="°C", device_class="temperature", state_class="measurement",
+        diagnostic=True
+    )
+    entities[("sensor", "consigne_chaudiere")] = _sensor(
+        "Consigne chaudière", "Boiler_Setpoint",
+        unit="°C", device_class="temperature", state_class="measurement"
+    )
+
+    # --- Diagnostic technique supplémentaire ---------------------------------
+    entities[("sensor", "adresse_modbus")] = _sensor(
+        "Adresse Modbus", "Modbus_Address",
+        diagnostic=True, icon="mdi:identifier"
+    )
+    entities[("sensor", "version_firmware")] = _sensor(
+        "Version firmware", "FirmwareVersion",
+        diagnostic=True, icon="mdi:chip"
+    )
+    entities[("sensor", "id_base_de_donnees")] = _sensor(
+        "ID base de données poêle", "DatabaseID",
+        diagnostic=True, icon="mdi:database"
+    )
+    entities[("sensor", "minutes_avant_extinction")] = _sensor(
+        "Minutes avant extinction", "Minutes_To_Switch_Off",
+        unit="min", diagnostic=True, icon="mdi:power-off"
+    )
+    entities[("sensor", "unite_temperature_affichee")] = _sensor(
+        "Unité affichée sur le poêle", "Celcius_Or_Fahrenheit",
+        value_template=_jinja_lookup(CELSIUS_FAHRENHEIT_MAP),
+        diagnostic=True, icon="mdi:thermometer"
+    )
+    entities[("binary_sensor", "mode_diagnostic")] = _binary_sensor(
+        "Mode diagnostic", "Diagnostics", icon="mdi:wrench"
+    )
+    entities[("binary_sensor", "veille")] = _binary_sensor(
+        "Veille", "Sleep", icon="mdi:sleep"
+    )
+    entities[("binary_sensor", "protection_hors_gel")] = _binary_sensor(
+        "Protection hors-gel", "AntiFreeze", icon="mdi:snowflake-alert"
+    )
+
+    for i in range(1, 6):
+        entities[("sensor", f"heures_puissance_{i}")] = _sensor(
+            f"Heures fonctionnement puissance {i}",
+            f"Hours_Of_Operation_In_Power{i}",
+            diagnostic=True, icon="mdi:clock-outline"
+        )
 
     # --- Disponibilité de la passerelle -------------------------------------
     entities[("binary_sensor", "passerelle_maestro_connectee")] = {
@@ -378,6 +463,19 @@ def remove_discovery(client, logger=None):
         if logger:
             logger.info(f"HA Discovery: remove {topic}")
 
+def _binary_sensor(name, state_key, icon=None, diagnostic=True,
+                    payload_on="1", payload_off="0"):
+    cfg = {
+        "name": name,
+        "state_topic": PUB_PREFIX + state_key,
+        "payload_on": payload_on,
+        "payload_off": payload_off,
+    }
+    if icon:
+        cfg["icon"] = icon
+    if diagnostic:
+        cfg["entity_category"] = "diagnostic"
+    return cfg
 
 if __name__ == "__main__":
     # Aperçu local des payloads générés, sans connexion MQTT
